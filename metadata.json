@@ -1,0 +1,6 @@
+{
+  "name": "مدارات",
+  "description": "لعبة ألغاز واستكشاف الكلمات العربية - أطلس المدارات",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

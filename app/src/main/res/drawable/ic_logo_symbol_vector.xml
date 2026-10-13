@@ -1,0 +1,53 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="120dp"
+    android:viewportWidth="120"
+    android:viewportHeight="120">
+    <!-- Outer Celestial Orbit Glow Ring -->
+    <path
+        android:strokeColor="#38BDF8"
+        android:strokeWidth="1.5"
+        android:strokeAlpha="0.35"
+        android:pathData="M60,10 A50,50 0 1,1 59.9,10" />
+
+    <!-- Main Golden Orbital Arc (Arabic Letter-like sweeping curve) -->
+    <path
+        android:strokeColor="#F59E0B"
+        android:strokeWidth="4.5"
+        android:strokeLineCap="round"
+        android:pathData="M26,72 C22,46 38,24 64,22 C92,20 102,44 96,68 C90,90 68,100 44,94 C34,91 26,82 24,70" />
+
+    <!-- Secondary Ethereal Precision Arc -->
+    <path
+        android:strokeColor="#FBBF24"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:pathData="M38,36 C50,28 72,28 84,38" />
+
+    <!-- Intersecting Latitude Celestial Axis Ring -->
+    <path
+        android:strokeColor="#0EA5E9"
+        android:strokeWidth="1.8"
+        android:strokeAlpha="0.6"
+        android:strokeLineCap="round"
+        android:pathData="M16,60 C26,76 94,76 104,60" />
+
+    <!-- Central Radiant Discovery Star Core (Amber Gold) -->
+    <!-- Center 4-point star -->
+    <path
+        android:fillColor="#FBBF24"
+        android:pathData="M60,42 L63,57 L78,60 L63,63 L60,78 L57,63 L42,60 L57,57 Z" />
+
+    <!-- Center Bright White Highlight Core -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M60,54 L61.5,58.5 L66,60 L61.5,61.5 L60,66 L58.5,61.5 L54,60 L58.5,58.5 Z" />
+
+    <!-- Orbit Satellite Nodes -->
+    <path
+        android:fillColor="#38BDF8"
+        android:pathData="M26,72 A3.5,3.5 0 1,1 25.9,72" />
+    <path
+        android:fillColor="#FBBF24"
+        android:pathData="M96,44 A2.5,2.5 0 1,1 95.9,44" />
+</vector>
