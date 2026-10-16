@@ -42,3 +42,16 @@ val SupernovaReward = Color(0xFFFBBF24)         // Coin / Star / Jackpot
 val CosmicBorder = Color(0x3338BDF8)            // Translucent Orbit Border (20% Cyan)
 val GoldGlowBorder = Color(0x66F59E0B)          // Translucent Gold Glow
 val TileShadowColor = Color(0x80050813)         // Soft Deep Shadow for 3D tiles
+
+// Light Theme Palette for «لغز وكنز» (Parchment & Warm Gold & Royal Azure)
+val LightBackground = Color(0xFFF4F6F9)          // Warm Ivory/Slate Background
+val LightBackgroundSecondary = Color(0xFFE8EEF5) // Soft Secondary Container
+val LightSurface = Color(0xFFFFFFFF)             // Clean Pure White Card Surface
+val LightSurfaceElevated = Color(0xFFFFFFFF)     // Elevated Pure Surface
+val LightTextPrimary = Color(0xFF0F172A)         // High Contrast Slate 900
+val LightTextSecondary = Color(0xFF334155)       // Clear Slate 700
+val LightTextTertiary = Color(0xFF64748B)        // Muted Slate 500
+val LightBorder = Color(0x40F59E0B)              // Subtle Warm Amber Border
+val LightOutline = Color(0xFFCBD5E1)             // Crisp Outline
+val LightTileShadowColor = Color(0x180B132B)     // Soft Golden Deep Shadow for Light Mode
+

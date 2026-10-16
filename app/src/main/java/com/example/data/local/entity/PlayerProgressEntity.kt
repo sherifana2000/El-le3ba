@@ -17,5 +17,8 @@ data class PlayerProgressEntity(
     val bestCompletionPercentage: Int = 0,
     val lastPlayedTimestamp: Long = System.currentTimeMillis(),
     val totalAttempts: Int = 0,
-    val completedSessions: Int = 0
+    val completedSessions: Int = 0,
+    val completedChallengesCount: Int = 0,
+    val totalCorrectAnswers: Int = 0,
+    val totalWrongAnswers: Int = 0
 )

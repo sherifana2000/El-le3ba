@@ -3,10 +3,13 @@ package com.example.ui.game
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.local.entity.PlayerProgressEntity
+import com.example.data.model.Challenge
+import com.example.data.model.GameDifficulty
 import com.example.data.model.Puzzle
 import com.example.data.repository.PlayerProgressRepository
 import com.example.data.repository.PuzzleRepository
 import com.example.domain.ArabicTextNormalizer
+import com.example.domain.LetterScrambler
 import com.example.ui.components.AnswerSlotState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -40,11 +43,14 @@ data class SlotDisplayState(
 
 data class PuzzleUiState(
     val categoryId: String = "cars",
-    val categoryName: String = "بيت السيارات والمواصلات",
-    val puzzles: List<Puzzle> = PuzzleRepository.getPuzzlesForCategory("cars").take(10),
+    val categoryName: String = "بيت السيارات والاختراعات",
+    val difficulty: GameDifficulty = GameDifficulty.EXPLORATION,
+    val challenges: List<Challenge> = emptyList(),
+    val currentChallengeIndex: Int = 0,
+    val puzzles: List<Puzzle> = emptyList(),
     val currentPuzzleIndex: Int = 0,
     val userSelectedTileIndices: List<Int> = emptyList(),
-    val revealedPositions: Map<Int, Int> = emptyMap(), // slotIndex (0..wordLen-1) -> tileIndex in availableLetters
+    val revealedPositions: Map<Int, Int> = emptyMap(),
     val eliminatedTileIndices: Set<Int> = emptySet(),
     val revealLetterUsed: Boolean = false,
     val removeWrongLettersUsed: Boolean = false,
@@ -55,8 +61,12 @@ data class PuzzleUiState(
     val submissionFeedback: SubmissionFeedback = SubmissionFeedback.Idle,
     val score: Int = 0,
     val correctCount: Int = 0,
+    val wrongCount: Int = 0,
     val isSessionCompleted: Boolean = false
 ) {
+    val currentChallenge: Challenge?
+        get() = challenges.getOrNull(currentChallengeIndex)
+
     val currentPuzzle: Puzzle?
         get() = puzzles.getOrNull(currentPuzzleIndex)
 
@@ -131,6 +141,12 @@ data class PuzzleUiState(
 
     val currentPuzzleNumber: Int
         get() = (currentPuzzleIndex + 1).coerceAtMost(puzzles.size)
+
+    val currentQuestionInChallengeNumber: Int
+        get() = currentPuzzle?.questionIndexInChallenge ?: ((currentPuzzleIndex % 3) + 1)
+
+    val totalQuestionsInCurrentChallenge: Int
+        get() = currentPuzzle?.totalQuestionsInChallenge ?: 3
 
     val totalPuzzlesCount: Int
         get() = puzzles.size
@@ -213,7 +229,7 @@ fun getRemovableDistractorIndices(
 }
 
 class PuzzleGameViewModel(
-    puzzles: List<Puzzle> = PuzzleRepository.getPuzzlesForCategory("cars").take(10),
+    puzzles: List<Puzzle> = emptyList(),
     categoryId: String = "cars",
     private val progressRepository: PlayerProgressRepository? = null
 ) : ViewModel() {
@@ -228,15 +244,24 @@ class PuzzleGameViewModel(
 
     private val _uiState = MutableStateFlow(
         run {
+            val initialChallenges = PuzzleRepository.getChallengesForCategory(categoryId)
+            val selectedPuzzles = if (puzzles.isNotEmpty()) {
+                puzzles
+            } else if (initialChallenges.isNotEmpty()) {
+                initialChallenges.first().questions
+            } else {
+                PuzzleRepository.getPuzzlesForCategory(categoryId)
+            }
+            val first = selectedPuzzles.firstOrNull()
             val category = PuzzleRepository.getCategoryById(categoryId)
-            val initialPuzzles = puzzles
-            val first = initialPuzzles.firstOrNull()
+
             PuzzleUiState(
                 categoryId = categoryId,
-                categoryName = category?.arabicName
-                    ?: first?.category
-                    ?: "بيت السيارات والمواصلات",
-                puzzles = initialPuzzles,
+                categoryName = category?.arabicName ?: first?.category ?: "بيت السيارات والاختراعات",
+                difficulty = first?.difficulty ?: GameDifficulty.EXPLORATION,
+                challenges = initialChallenges,
+                currentChallengeIndex = 0,
+                puzzles = selectedPuzzles,
                 currentReward = first?.rewardPoints ?: 15
             )
         }
@@ -244,16 +269,35 @@ class PuzzleGameViewModel(
     val uiState: StateFlow<PuzzleUiState> = _uiState.asStateFlow()
 
     /**
-     * Starts a brand new game round for the specified category, loading exactly 10 puzzles.
+     * Starts a gameplay session for a House, with optional difficulty and challenge targeting.
+     * Guarantees each puzzle's letter pool is non-trivially scrambled.
      */
-    fun startSession(categoryId: String) {
+    fun startSession(
+        categoryId: String,
+        difficulty: GameDifficulty = GameDifficulty.EXPLORATION,
+        challengeId: String? = null
+    ) {
         val category = PuzzleRepository.getCategoryById(categoryId)
-        val selectedPuzzles = PuzzleRepository.getPuzzlesForCategory(categoryId).take(10)
-        val firstPuzzle = selectedPuzzles.firstOrNull()
+        val categoryChallenges = PuzzleRepository.getChallengesForCategory(categoryId, difficulty).ifEmpty {
+            PuzzleRepository.getChallengesForCategory(categoryId)
+        }
+
+        val targetChallenge = if (challengeId != null) {
+            categoryChallenges.firstOrNull { it.id == challengeId } ?: categoryChallenges.firstOrNull()
+        } else {
+            categoryChallenges.firstOrNull()
+        }
+
+        val sessionPuzzles = targetChallenge?.questions ?: PuzzleRepository.getPuzzlesForCategory(categoryId)
+        val firstPuzzle = sessionPuzzles.firstOrNull()
+
         _uiState.value = PuzzleUiState(
             categoryId = categoryId,
-            categoryName = category?.arabicName ?: "بيت السيارات والمواصلات",
-            puzzles = selectedPuzzles,
+            categoryName = category?.arabicName ?: "بيت السيارات والاختراعات",
+            difficulty = difficulty,
+            challenges = categoryChallenges,
+            currentChallengeIndex = categoryChallenges.indexOf(targetChallenge).coerceAtLeast(0),
+            puzzles = sessionPuzzles,
             currentPuzzleIndex = 0,
             userSelectedTileIndices = emptyList(),
             revealedPositions = emptyMap(),
@@ -267,6 +311,7 @@ class PuzzleGameViewModel(
             submissionFeedback = SubmissionFeedback.Idle,
             score = 0,
             correctCount = 0,
+            wrongCount = 0,
             isSessionCompleted = false
         )
     }
@@ -276,10 +321,7 @@ class PuzzleGameViewModel(
             if (state.isSessionCompleted || state.submissionFeedback == SubmissionFeedback.Correct) {
                 return@update state
             }
-            if (tileIndex in state.eliminatedTileIndices) {
-                return@update state
-            }
-            if (tileIndex in state.selectedTileIndices) {
+            if (tileIndex in state.eliminatedTileIndices || tileIndex in state.selectedTileIndices) {
                 return@update state
             }
             val puzzle = state.currentPuzzle ?: return@update state
@@ -314,11 +356,7 @@ class PuzzleGameViewModel(
 
     fun removeLetterAt(slotIndex: Int) {
         _uiState.update { state ->
-            if (state.submissionFeedback == SubmissionFeedback.Correct) {
-                return@update state
-            }
-            // If slot is locked/revealed, it cannot be removed!
-            if (slotIndex in state.revealedPositions.keys) {
+            if (state.submissionFeedback == SubmissionFeedback.Correct || slotIndex in state.revealedPositions.keys) {
                 return@update state
             }
             val puzzle = state.currentPuzzle ?: return@update state
@@ -349,11 +387,6 @@ class PuzzleGameViewModel(
         }
     }
 
-    /**
-     * Assistance Action A: Reveal Letter
-     * Reveals one correct answer letter in its correct position.
-     * Deducts REVEAL_LETTER_COST from currentReward.
-     */
     fun revealLetter() {
         _uiState.update { state ->
             if (!state.canRevealLetter) return@update state
@@ -361,7 +394,6 @@ class PuzzleGameViewModel(
             val wordLen = puzzle.correctAnswer.length
             val unrevealedPositions = (0 until wordLen).filter { it !in state.revealedPositions.keys }
 
-            // Find first unrevealed position that is not already correctly filled
             val targetSlot = unrevealedPositions.firstOrNull { slotIdx ->
                 val uIdx = unrevealedPositions.indexOf(slotIdx)
                 val currentTile = state.userSelectedTileIndices.getOrNull(uIdx)
@@ -372,7 +404,6 @@ class PuzzleGameViewModel(
             val targetChar = puzzle.correctAnswer[targetSlot].toString()
             val placedTiles = (state.userSelectedTileIndices + state.revealedPositions.values).toSet()
 
-            // Try to find an unplaced, non-eliminated tile matching targetChar
             var chosenTile = puzzle.availableLetters.indices.firstOrNull { idx ->
                 ArabicTextNormalizer.isMatch(puzzle.availableLetters[idx], targetChar) &&
                         idx !in placedTiles &&
@@ -380,14 +411,11 @@ class PuzzleGameViewModel(
             }
 
             val updatedUserIndices = state.userSelectedTileIndices.toMutableList()
-
-            // If the user had already placed a tile at targetSlot position, remove it from user indices
             val uIdx = unrevealedPositions.indexOf(targetSlot)
             if (uIdx in updatedUserIndices.indices) {
                 updatedUserIndices.removeAt(uIdx)
             }
 
-            // If still no unplaced tile found, take from user-selected tiles
             if (chosenTile == null) {
                 val placedInUser = updatedUserIndices.firstOrNull { idx ->
                     ArabicTextNormalizer.isMatch(puzzle.availableLetters[idx], targetChar)
@@ -413,11 +441,6 @@ class PuzzleGameViewModel(
         }
     }
 
-    /**
-     * Assistance Action B: Remove Wrong Letters
-     * Eliminates up to 2 distractor tiles from the available letter pool.
-     * Deducts REMOVE_WRONG_LETTERS_COST from currentReward.
-     */
     fun removeWrongLetters() {
         _uiState.update { state ->
             if (!state.canRemoveWrongLetters) return@update state
@@ -441,11 +464,6 @@ class PuzzleGameViewModel(
         }
     }
 
-    /**
-     * Assistance Action C: Show Hint
-     * Displays the puzzle hint text.
-     * Deducts SHOW_HINT_COST from currentReward.
-     */
     fun showHint() {
         _uiState.update { state ->
             if (!state.canShowHint) return@update state
@@ -467,7 +485,10 @@ class PuzzleGameViewModel(
             val answer = state.currentAnswer
 
             if (answer.isEmpty() || !state.isAnswerComplete) {
-                return@update state.copy(submissionFeedback = SubmissionFeedback.Incorrect)
+                return@update state.copy(
+                    submissionFeedback = SubmissionFeedback.Incorrect,
+                    wrongCount = state.wrongCount + 1
+                )
             }
 
             val isCorrect = ArabicTextNormalizer.isMatch(answer, puzzle.correctAnswer)
@@ -479,7 +500,10 @@ class PuzzleGameViewModel(
                     correctCount = state.correctCount + 1
                 )
             } else {
-                state.copy(submissionFeedback = SubmissionFeedback.Incorrect)
+                state.copy(
+                    submissionFeedback = SubmissionFeedback.Incorrect,
+                    wrongCount = state.wrongCount + 1
+                )
             }
         }
     }
@@ -519,15 +543,15 @@ class PuzzleGameViewModel(
                 categoryId = state.categoryId,
                 score = state.score,
                 completedPuzzlesCount = state.correctCount,
-                completionPercentage = state.completionPercentage
+                completionPercentage = state.completionPercentage,
+                completedChallengesCountDelta = 1,
+                correctAnswersDelta = state.correctCount,
+                wrongAnswersDelta = state.wrongCount,
+                isCompletedSession = true
             )
         }
     }
 
-    /**
-     * Saves partial session progress when the player exits before completing all 10 puzzles.
-     * Safely preserves categoryId, score, and completed puzzle count.
-     */
     fun savePartialProgress() {
         val state = _uiState.value
         if (state.score > 0 || state.correctCount > 0) {
@@ -537,28 +561,30 @@ class PuzzleGameViewModel(
                     categoryId = state.categoryId,
                     score = state.score,
                     completedPuzzlesCount = state.correctCount,
-                    completionPercentage = state.completionPercentage
+                    completionPercentage = state.completionPercentage,
+                    completedChallengesCountDelta = 0,
+                    correctAnswersDelta = state.correctCount,
+                    wrongAnswersDelta = state.wrongCount,
+                    isCompletedSession = false
                 )
             }
         }
     }
 
-    /**
-     * Explicitly forces persisting the current progress (e.g. for testing).
-     */
     suspend fun saveProgressNow() {
         val state = _uiState.value
         progressRepository?.saveSessionProgress(
             categoryId = state.categoryId,
             score = state.score,
             completedPuzzlesCount = state.correctCount,
-            completionPercentage = state.completionPercentage
+            completionPercentage = state.completionPercentage,
+            completedChallengesCountDelta = if (state.isSessionCompleted) 1 else 0,
+            correctAnswersDelta = state.correctCount,
+            wrongAnswersDelta = state.wrongCount,
+            isCompletedSession = state.isSessionCompleted
         )
     }
 
-    /**
-     * Resets the current session to puzzle 1 for the SAME active category.
-     */
     fun replaySession() {
         _uiState.update { state ->
             val firstPuzzle = state.puzzles.firstOrNull()
@@ -576,6 +602,7 @@ class PuzzleGameViewModel(
                 submissionFeedback = SubmissionFeedback.Idle,
                 score = 0,
                 correctCount = 0,
+                wrongCount = 0,
                 isSessionCompleted = false
             )
         }

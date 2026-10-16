@@ -223,10 +223,9 @@ class PlayerProgressPersistenceTest {
             progressRepository = repository
         )
 
-        // Complete 10 puzzles
-        for (i in 0 until 10) {
+        val total = vm.uiState.value.puzzles.size
+        for (i in 0 until total) {
             val puzzle = vm.uiState.value.currentPuzzle!!
-            // Place correct answer letters
             for (char in puzzle.correctAnswer) {
                 val tileIdx = puzzle.availableLetters.indices.first { idx ->
                     puzzle.availableLetters[idx] == char.toString() && idx !in vm.uiState.value.selectedTileIndices
@@ -246,8 +245,9 @@ class PlayerProgressPersistenceTest {
         val saved = repository.getProgressById("cars")
         assertNotNull("Saved record must exist in Room", saved)
         assertEquals(vm.uiState.value.score, saved?.highestScore)
-        assertEquals(10, saved?.completedPuzzlesCount)
+        assertEquals(total, saved?.completedPuzzlesCount)
         assertEquals(100, saved?.bestCompletionPercentage)
+        assertTrue("Completed challenges should be recorded", (saved?.completedChallengesCount ?: 0) >= 1)
     }
 
     @Test
@@ -258,7 +258,8 @@ class PlayerProgressPersistenceTest {
         )
 
         // Solve only 2 puzzles then save partial progress
-        for (i in 0 until 2) {
+        val solveCount = minOf(2, vm.uiState.value.puzzles.size)
+        for (i in 0 until solveCount) {
             val puzzle = vm.uiState.value.currentPuzzle!!
             for (char in puzzle.correctAnswer) {
                 val tileIdx = puzzle.availableLetters.indices.first { idx ->
@@ -271,7 +272,7 @@ class PlayerProgressPersistenceTest {
         }
 
         assertFalse(vm.uiState.value.isSessionCompleted)
-        assertEquals(2, vm.uiState.value.correctCount)
+        assertEquals(solveCount, vm.uiState.value.correctCount)
         assertTrue(vm.uiState.value.score > 0)
 
         // Trigger partial progress save
@@ -280,6 +281,25 @@ class PlayerProgressPersistenceTest {
         val saved = repository.getProgressById("science")
         assertNotNull(saved)
         assertEquals(vm.uiState.value.score, saved?.highestScore)
-        assertEquals(2, saved?.completedPuzzlesCount)
+        assertEquals(solveCount, saved?.completedPuzzlesCount)
+    }
+
+    @Test
+    fun testRoomV2ColumnsTrackingAnswersAndChallenges() = runTest {
+        repository.saveSessionProgress(
+            categoryId = "history",
+            score = 150,
+            completedPuzzlesCount = 3,
+            completionPercentage = 100,
+            completedChallengesCountDelta = 1,
+            correctAnswersDelta = 3,
+            wrongAnswersDelta = 1
+        )
+
+        val retrieved = repository.getProgressById("history")
+        assertNotNull(retrieved)
+        assertEquals(1, retrieved?.completedChallengesCount)
+        assertEquals(3, retrieved?.totalCorrectAnswers)
+        assertEquals(1, retrieved?.totalWrongAnswers)
     }
 }

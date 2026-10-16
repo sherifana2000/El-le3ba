@@ -37,11 +37,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.local.entity.PlayerProgressEntity
+import com.example.data.model.GameDifficulty
 import com.example.data.model.PuzzleCategory
 import com.example.data.repository.PuzzleRepository
 import com.example.ui.components.MadaratCounter
@@ -55,7 +55,6 @@ import com.example.ui.theme.AmberGoldLight
 import com.example.ui.theme.AmberGoldPrimary
 import com.example.ui.theme.CelestialNavyDark
 import com.example.ui.theme.CelestialNavyMedium
-import com.example.ui.theme.CelestialSurface
 import com.example.ui.theme.CelestialSurfaceElevated
 import com.example.ui.theme.CosmicBorder
 import com.example.ui.theme.DimmedStarlight
@@ -66,6 +65,7 @@ import com.example.ui.theme.GameElevation
 import com.example.ui.theme.GameSpacing
 import com.example.ui.theme.GameTypography
 import com.example.ui.theme.GoldGlowBorder
+import com.example.ui.theme.HouseThemes
 import com.example.ui.theme.PearlIvory
 import com.example.ui.theme.StarlightSilver
 import com.example.ui.theme.Typography
@@ -76,18 +76,19 @@ import com.example.ui.theme.Typography
 
 @Composable
 fun GameplaySetupScreen(
-    onStartRoundClick: (categoryId: String) -> Unit,
+    onStartRoundClick: (categoryId: String, difficulty: GameDifficulty) -> Unit,
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier,
-    initialCategoryId: String = "cars",
+    initialCategoryId: String = "astronomy",
     progressMap: Map<String, PlayerProgressEntity> = emptyMap()
 ) {
     var selectedCategoryId by remember { mutableStateOf(initialCategoryId) }
-    var selectedModeIndex by remember { mutableStateOf(0) }
+    var selectedDifficulty by remember { mutableStateOf(GameDifficulty.EXPLORATION) }
 
     val categories = remember { PuzzleRepository.getCategories() }
     val currentCategory = categories.firstOrNull { it.id == selectedCategoryId } ?: categories.first()
     val currentProgress = progressMap[selectedCategoryId]
+    val houseTheme = HouseThemes.getThemeForCategory(selectedCategoryId)
 
     Box(
         modifier = modifier
@@ -95,9 +96,9 @@ fun GameplaySetupScreen(
             .background(
                 brush = Brush.verticalGradient(
                     colors = listOf(
-                        CelestialNavyDark,
+                        houseTheme.backgroundGradient.first(),
                         CelestialNavyMedium,
-                        Color(0xFF090E20)
+                        Color(0xFF070B18)
                     )
                 )
             )
@@ -108,32 +109,15 @@ fun GameplaySetupScreen(
             val width = size.width
             val height = size.height
 
-            // Soft cyan & gold celestial dust
             drawCircle(
                 brush = Brush.radialGradient(
-                    colors = listOf(EtherealCyan.copy(alpha = 0.08f), Color.Transparent),
+                    colors = listOf(houseTheme.accentGlow.copy(alpha = 0.10f), Color.Transparent),
                     center = Offset(width * 0.85f, height * 0.15f),
                     radius = width * 0.6f
                 )
             )
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(AmberGoldPrimary.copy(alpha = 0.06f), Color.Transparent),
-                    center = Offset(width * 0.15f, height * 0.6f),
-                    radius = width * 0.5f
-                )
-            )
-
-            // Faint orbit curves
-            drawCircle(
-                color = CosmicBorder.copy(alpha = 0.15f),
-                radius = width * 0.45f,
-                center = Offset(width * 0.5f, height * 0.35f),
-                style = Stroke(width = 1f)
-            )
         }
 
-        // Scrollable Content
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -141,11 +125,10 @@ fun GameplaySetupScreen(
                 .navigationBarsPadding()
                 .padding(horizontal = GameSpacing.screenPadding)
                 .verticalScroll(rememberScrollState()),
-            horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(GameSpacing.md)
         ) {
             // ----------------------------------------------------------------
-            // 1. TOP HEADER & CURRENCY AREA
+            // 1. TOP BAR NAVIGATION
             // ----------------------------------------------------------------
             Row(
                 modifier = Modifier
@@ -154,7 +137,6 @@ fun GameplaySetupScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                // Back Button (AutoMirrored handles RTL smoothly)
                 MadaratIconButton(
                     icon = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "الرجوع للرئيسية",
@@ -163,18 +145,19 @@ fun GameplaySetupScreen(
                     testTag = "setup_back_button"
                 )
 
-                // Currency Pill Counters
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(GameSpacing.xs)
                 ) {
+                    val totalChallenges = progressMap.values.sumOf { it.completedChallengesCount }
+                    val totalScore = progressMap.values.sumOf { it.highestScore }
                     MadaratCounter(
-                        count = 42,
+                        count = totalChallenges,
                         isCoin = false,
                         testTag = "setup_stars_counter"
                     )
                     MadaratCounter(
-                        count = 350,
+                        count = totalScore,
                         isCoin = true,
                         testTag = "setup_coins_counter"
                     )
@@ -189,7 +172,7 @@ fun GameplaySetupScreen(
                 modifier = Modifier.padding(vertical = GameSpacing.xs)
             ) {
                 MadaratStatusBadge(
-                    text = "المحطة الأولى",
+                    text = "لغز وكنز • 12 بيتاً معرفياً",
                     type = StatusBadgeType.Info,
                     modifier = Modifier.padding(bottom = GameSpacing.xs)
                 )
@@ -203,7 +186,7 @@ fun GameplaySetupScreen(
                 Spacer(modifier = Modifier.height(GameSpacing.xs))
 
                 Text(
-                    text = "اختر وجهة رحلتك وانطلق في فك شفرات الحروف واكتشاف أسرار الكلمات",
+                    text = "اختر وجهة رحلتك ومستوى التحدي لتكوين الكلمات وحل ألغاز المعرفة",
                     style = Typography.bodyMedium.copy(lineHeight = 22.sp),
                     color = Color(0xFFCBD5E1),
                     modifier = Modifier.padding(horizontal = GameSpacing.sm)
@@ -211,7 +194,7 @@ fun GameplaySetupScreen(
             }
 
             // ----------------------------------------------------------------
-            // 3. CATEGORY SELECTION LIST (HOUSES)
+            // 3. CATEGORY SELECTION LIST (12 HOUSES)
             // ----------------------------------------------------------------
             Column(
                 modifier = Modifier.fillMaxWidth(),
@@ -223,7 +206,7 @@ fun GameplaySetupScreen(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        text = "اختر بيت المعرفة للاستكشاف:",
+                        text = "اختر بيت المعرفة:",
                         style = Typography.titleMedium,
                         color = PearlIvory
                     )
@@ -264,13 +247,12 @@ fun GameplaySetupScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(GameSpacing.md)
                         ) {
-                            // House Avatar
                             Box(
                                 modifier = Modifier
                                     .size(54.dp)
                                     .clip(GameCornerRadius.shapeLg)
-                                    .background(AmberGoldPrimary.copy(alpha = 0.2f))
-                                    .border(1.5.dp, AmberGoldPrimary.copy(alpha = 0.5f), GameCornerRadius.shapeLg),
+                                    .background(houseTheme.primaryColor.copy(alpha = 0.25f))
+                                    .border(1.5.dp, houseTheme.primaryColor.copy(alpha = 0.6f), GameCornerRadius.shapeLg),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
@@ -294,14 +276,14 @@ fun GameplaySetupScreen(
                         }
 
                         MadaratStatusBadge(
-                            text = "متاح",
+                            text = "${currentCategory.challenges.size} تحديات",
                             type = StatusBadgeType.Success
                         )
                     }
 
                     Spacer(modifier = Modifier.height(GameSpacing.lg))
 
-                    // Mission Details Grid / Indicators
+                    // Mission Details Grid
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -312,23 +294,23 @@ fun GameplaySetupScreen(
                         horizontalArrangement = Arrangement.SpaceAround
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(text = "الألغاز", style = Typography.labelSmall, color = StarlightSilver)
+                            Text(text = "التحديات", style = Typography.labelSmall, color = StarlightSilver)
                             Spacer(modifier = Modifier.height(2.dp))
-                            Text(text = "${currentCategory.puzzles.size} محطات", style = GameTypography.GameNumberMedium, color = EtherealCyanLight)
+                            Text(text = "${currentCategory.challenges.size} متكاملة", style = GameTypography.GameNumberMedium, color = EtherealCyanLight)
                         }
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(text = "المستوى", style = Typography.labelSmall, color = StarlightSilver)
+                            Text(text = "الأسئلة", style = Typography.labelSmall, color = StarlightSilver)
                             Spacer(modifier = Modifier.height(2.dp))
-                            Text(text = "مستكشف", style = GameTypography.GameNumberMedium, color = AmberGoldLight)
+                            Text(text = "${currentCategory.puzzles.size} سؤالاً", style = GameTypography.GameNumberMedium, color = AmberGoldLight)
                         }
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(text = "المكافأة", style = Typography.labelSmall, color = StarlightSilver)
+                            Text(text = "الصعوبة", style = Typography.labelSmall, color = StarlightSilver)
                             Spacer(modifier = Modifier.height(2.dp))
-                            Text(text = "50 🪙 • 3 ⭐", style = GameTypography.GameNumberMedium, color = PearlIvory)
+                            Text(text = selectedDifficulty.titleArabic, style = GameTypography.GameNumberMedium, color = PearlIvory)
                         }
                     }
 
-                    // Persistent Player Progress for this House (if recorded)
+                    // Persistent Player Progress for this House
                     if (currentProgress != null && (currentProgress.highestScore > 0 || currentProgress.totalAttempts > 0)) {
                         Spacer(modifier = Modifier.height(GameSpacing.sm))
                         Row(
@@ -350,19 +332,19 @@ fun GameplaySetupScreen(
                                 )
                             }
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(text = "أفضل إنجاز", style = Typography.labelSmall, color = StarlightSilver)
+                                Text(text = "التحديات المكتملة", style = Typography.labelSmall, color = StarlightSilver)
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(
-                                    text = "${currentProgress.bestCompletionPercentage}%",
+                                    text = "${currentProgress.completedChallengesCount} 🏆",
                                     style = GameTypography.GameNumberMedium,
                                     color = EtherealCyanLight
                                 )
                             }
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(text = "الجولات المكتملة", style = Typography.labelSmall, color = StarlightSilver)
+                                Text(text = "صحة الإجابات", style = Typography.labelSmall, color = StarlightSilver)
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(
-                                    text = "${currentProgress.completedSessions}",
+                                    text = "${currentProgress.totalCorrectAnswers} صحيحة",
                                     style = GameTypography.GameNumberMedium,
                                     color = PearlIvory
                                 )
@@ -372,38 +354,29 @@ fun GameplaySetupScreen(
 
                     Spacer(modifier = Modifier.height(GameSpacing.lg))
 
-                    // Mode Selection Options
+                    // Difficulty Selection Tiers
                     Text(
-                        text = "اختر نمط الجولة:",
+                        text = "اختر مستوى الصعوبة:",
                         style = Typography.labelMedium,
                         color = PearlIvory,
                         modifier = Modifier.padding(bottom = GameSpacing.xs)
                     )
 
-                    // Option 1: Classic Exploration Mode
-                    SetupModeOption(
-                        title = "النمط الكلاسيكي",
-                        subtitle = "استكشاف هادئ بدون ضغط زمني للمتعة الذهنية",
-                        isSelected = selectedModeIndex == 0,
-                        onClick = { selectedModeIndex = 0 },
-                        testTag = "setup_mode_classic"
-                    )
-
-                    Spacer(modifier = Modifier.height(GameSpacing.sm))
-
-                    // Option 2: Star Speed Challenge
-                    SetupModeOption(
-                        title = "تحدي النجوم المدارية",
-                        subtitle = "حل الألغاز بسرعة لمضاعفة مكافآت النجوم والعملات",
-                        isSelected = selectedModeIndex == 1,
-                        onClick = { selectedModeIndex = 1 },
-                        testTag = "setup_mode_speed"
-                    )
+                    GameDifficulty.values().forEach { difficulty ->
+                        SetupModeOption(
+                            title = "${difficulty.badgeEmoji} ${difficulty.titleArabic}",
+                            subtitle = "${difficulty.descriptionArabic} • (${difficulty.distractorCount} مشتتات)",
+                            isSelected = selectedDifficulty == difficulty,
+                            onClick = { selectedDifficulty = difficulty },
+                            testTag = "setup_difficulty_${difficulty.name.lowercase()}"
+                        )
+                        Spacer(modifier = Modifier.height(GameSpacing.xs))
+                    }
                 }
             }
 
             // ----------------------------------------------------------------
-            // 5. ACTIONS (Primary Start & Secondary Home)
+            // 5. ACTIONS
             // ----------------------------------------------------------------
             Column(
                 modifier = Modifier
@@ -412,9 +385,9 @@ fun GameplaySetupScreen(
                 verticalArrangement = Arrangement.spacedBy(GameSpacing.sm)
             ) {
                 MadaratPrimaryButton(
-                    text = "انطلق إلى اللغز الأول",
+                    text = "انطلق إلى التحدي الأول (3 أسئلة)",
                     icon = Icons.Default.PlayArrow,
-                    onClick = { onStartRoundClick(selectedCategoryId) },
+                    onClick = { onStartRoundClick(selectedCategoryId, selectedDifficulty) },
                     modifier = Modifier.fillMaxWidth(),
                     testTag = "setup_start_round_button"
                 )
@@ -430,7 +403,6 @@ fun GameplaySetupScreen(
     }
 }
 
-
 @Composable
 private fun CategorySelectionCard(
     category: PuzzleCategory,
@@ -439,6 +411,8 @@ private fun CategorySelectionCard(
     modifier: Modifier = Modifier,
     progress: PlayerProgressEntity? = null
 ) {
+    val theme = HouseThemes.getThemeForCategory(category.id)
+
     Surface(
         onClick = onClick,
         shape = GameCornerRadius.shapeMd,
@@ -453,28 +427,29 @@ private fun CategorySelectionCard(
             .testTag("category_card_${category.id}")
     ) {
         Row(
-            modifier = Modifier.padding(GameSpacing.md),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(GameSpacing.md),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Row(
-                modifier = Modifier.weight(1f),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(GameSpacing.md)
+                horizontalArrangement = Arrangement.spacedBy(GameSpacing.md),
+                modifier = Modifier.weight(1f)
             ) {
-                // Category Icon Avatar
                 Box(
                     modifier = Modifier
                         .size(46.dp)
-                        .clip(GameCornerRadius.shapeMd)
+                        .clip(CircleShape)
                         .background(
-                            if (isSelected) AmberGoldPrimary.copy(alpha = 0.22f)
-                            else CelestialSurface.copy(alpha = 0.5f)
+                            if (isSelected) theme.primaryColor.copy(alpha = 0.3f)
+                            else theme.primaryColor.copy(alpha = 0.15f)
                         )
                         .border(
                             1.dp,
-                            if (isSelected) AmberGoldPrimary.copy(alpha = 0.6f) else CosmicBorder,
-                            GameCornerRadius.shapeMd
+                            if (isSelected) AmberGoldPrimary else theme.primaryColor.copy(alpha = 0.35f),
+                            CircleShape
                         ),
                     contentAlignment = Alignment.Center
                 ) {
@@ -485,56 +460,31 @@ private fun CategorySelectionCard(
                 }
 
                 Column {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(GameSpacing.xs)
-                    ) {
-                        Text(
-                            text = category.arabicName,
-                            style = Typography.titleMedium,
-                            color = if (isSelected) AmberGoldLight else PearlIvory
-                        )
-                        if (isSelected) {
-                            Icon(
-                                imageVector = Icons.Default.CheckCircle,
-                                contentDescription = "تم الاختيار",
-                                tint = AmberGoldLight,
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = category.shortDescription,
-                        style = Typography.bodySmall,
-                        color = StarlightSilver,
-                        maxLines = 1
+                        text = "بيت ${category.arabicName}",
+                        style = Typography.titleSmall,
+                        color = if (isSelected) AmberGoldLight else PearlIvory
                     )
-                    if (progress != null && progress.highestScore > 0) {
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = "أعلى نتيجة: ${progress.highestScore} نقطة",
-                            style = Typography.labelSmall,
-                            color = AmberGoldLight
-                        )
-                    }
+                    Text(
+                        text = "${category.challenges.size} تحديات • ${category.puzzles.size} سؤالاً",
+                        style = Typography.bodySmall,
+                        color = StarlightSilver
+                    )
                 }
             }
 
-            Column(
-                horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                MadaratStatusBadge(
-                    text = "${category.puzzles.size} ألغاز",
-                    type = if (isSelected) StatusBadgeType.Warning else StatusBadgeType.Info
+            if (isSelected) {
+                Icon(
+                    imageVector = Icons.Default.CheckCircle,
+                    contentDescription = "تم الاختيار",
+                    tint = AmberGoldPrimary,
+                    modifier = Modifier.size(24.dp)
                 )
-                if (progress != null && (progress.bestCompletionPercentage >= 100 || progress.completedPuzzlesCount >= category.puzzles.size)) {
-                    MadaratStatusBadge(
-                        text = "مكتمل ⭐",
-                        type = StatusBadgeType.Success
-                    )
-                }
+            } else if (progress != null && progress.completedChallengesCount > 0) {
+                MadaratStatusBadge(
+                    text = "${progress.completedChallengesCount} 🏆",
+                    type = StatusBadgeType.Success
+                )
             }
         }
     }
@@ -546,34 +496,33 @@ private fun SetupModeOption(
     subtitle: String,
     isSelected: Boolean,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    testTag: String = "mode_option"
+    testTag: String
 ) {
     Surface(
         onClick = onClick,
         shape = GameCornerRadius.shapeMd,
-        color = if (isSelected) CelestialSurface.copy(alpha = 0.9f) else CelestialNavyDark.copy(alpha = 0.5f),
+        color = if (isSelected) CelestialNavyMedium else CelestialNavyDark.copy(alpha = 0.5f),
         border = androidx.compose.foundation.BorderStroke(
-            1.2.dp,
-            if (isSelected) AmberGoldPrimary else CosmicBorder
+            width = if (isSelected) 1.5.dp else 1.dp,
+            color = if (isSelected) AmberGoldPrimary else CosmicBorder
         ),
-        shadowElevation = if (isSelected) GameElevation.low else GameElevation.flat,
-        modifier = modifier
-            .testTag(testTag)
+        modifier = Modifier
             .fillMaxWidth()
+            .testTag(testTag)
     ) {
         Row(
-            modifier = Modifier.padding(GameSpacing.md),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = GameSpacing.md, vertical = GameSpacing.sm),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = title,
-                    style = Typography.titleMedium,
+                    style = Typography.titleSmall,
                     color = if (isSelected) AmberGoldLight else PearlIvory
                 )
-                Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = subtitle,
                     style = Typography.bodySmall,
@@ -583,25 +532,15 @@ private fun SetupModeOption(
 
             Box(
                 modifier = Modifier
-                    .size(22.dp)
+                    .size(20.dp)
                     .clip(CircleShape)
-                    .background(if (isSelected) AmberGoldPrimary else Color.Transparent)
                     .border(
-                        1.5.dp,
-                        if (isSelected) AmberGoldLight else DimmedStarlight,
-                        CircleShape
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                if (isSelected) {
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .clip(CircleShape)
-                            .background(CelestialNavyDark)
+                        width = 2.dp,
+                        color = if (isSelected) AmberGoldPrimary else DimmedStarlight,
+                        shape = CircleShape
                     )
-                }
-            }
+                    .background(if (isSelected) AmberGoldPrimary else Color.Transparent)
+            )
         }
     }
 }

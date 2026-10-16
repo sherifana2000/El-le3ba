@@ -240,12 +240,12 @@ fun HomeScreen(
 
                     Column {
                         Text(
-                            text = "مَدَارَات",
+                            text = "لُغْز وَكَنْز",
                             style = Typography.titleLarge.copy(fontSize = 18.sp, fontWeight = FontWeight.Bold),
                             color = PearlIvory
                         )
                         Text(
-                            text = "أطلس الكلمات",
+                            text = "رحلة المعرفة والألغاز",
                             style = Typography.labelSmall.copy(fontSize = 11.sp),
                             color = EtherealCyanLight
                         )
@@ -387,7 +387,7 @@ fun HomeScreen(
                         // Central Scaled Brand Vector Inside Portal
                         Icon(
                             painter = painterResource(id = R.drawable.ic_logo_symbol_vector),
-                            contentDescription = "رمز مدارات المعرفة",
+                            contentDescription = "شعار لغز وكنز",
                             tint = Color.Unspecified,
                             modifier = Modifier.size(92.dp)
                         )
@@ -401,13 +401,13 @@ fun HomeScreen(
                 modifier = Modifier.padding(horizontal = GameSpacing.md, vertical = GameSpacing.xs)
             ) {
                 Text(
-                    text = "رحلة في عوالم الكلمة والغموض",
+                    text = "فكّ الألغاز واجمع الكنوز",
                     style = Typography.headlineMedium,
                     color = PearlIvory
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "اكتشف أسرار البيوت وفك شفرات الحروف العربية",
+                    text = "اكتشف أسرار البيوت واستخرج الكنوز المعرفية",
                     style = Typography.bodyMedium.copy(lineHeight = 22.sp),
                     color = Color(0xFFCBD5E1) // Enhanced Slate-300 contrast while keeping secondary hierarchy
                 )
@@ -509,7 +509,7 @@ fun HomeScreen(
             // 5. WORLD / CATEGORIES ACCESS ENTRY
             // ----------------------------------------------------------------
             MadaratSecondaryButton(
-                text = "استكشف خريطة العوالم (12 بيتاً)",
+                text = "خريطة المغامرة والكنوز (12 بيتاً)",
                 icon = Icons.Default.Explore,
                 onClick = onExploreWorldsClick,
                 modifier = Modifier

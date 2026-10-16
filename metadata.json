@@ -1,6 +1,6 @@
 {
-  "name": "مدارات",
-  "description": "لعبة ألغاز واستكشاف الكلمات العربية - أطلس المدارات",
+  "name": "لغز وكنز",
+  "description": "لعبة ألغاز الكلمات والمعرفة العربية والكنوز الثقافية - رحلة فك الألغاز واكتشاف الكنوز",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

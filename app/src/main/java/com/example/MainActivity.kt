@@ -27,6 +27,7 @@ import com.example.ui.navigation.MadaratScreen
 import com.example.ui.screens.GameRoundScreen
 import com.example.ui.screens.GameplaySetupScreen
 import com.example.ui.screens.HomeScreen
+import com.example.ui.screens.TreasureMapScreen
 import androidx.compose.runtime.rememberCoroutineScope
 import com.example.ui.components.MadaratSettingsDialog
 import com.example.ui.theme.MadaratTheme
@@ -37,7 +38,8 @@ class MainActivity : ComponentActivity() {
     super.onCreate(savedInstanceState)
     enableEdgeToEdge()
     setContent {
-      MadaratTheme {
+        var isDarkTheme by remember { mutableStateOf(true) }
+        MadaratTheme(darkTheme = isDarkTheme) {
         val context = LocalContext.current
         val coroutineScope = rememberCoroutineScope()
         val progressRepository = remember { PlayerProgressRepository.getInstance(context) }
@@ -46,6 +48,8 @@ class MainActivity : ComponentActivity() {
         )
         val allProgress by gameViewModel.allProgress.collectAsStateWithLifecycle()
         var currentScreen by remember { mutableStateOf<MadaratScreen>(MadaratScreen.Home) }
+        var previousScreen by remember { mutableStateOf<MadaratScreen>(MadaratScreen.Home) }
+        var setupInitialCategory by remember { mutableStateOf("astronomy") }
         var showSettingsDialog by remember { mutableStateOf(false) }
 
         // Physical and gesture back handling with partial progress persistence
@@ -53,15 +57,18 @@ class MainActivity : ComponentActivity() {
           currentScreen = when (currentScreen) {
             MadaratScreen.GameRound -> {
               gameViewModel.savePartialProgress()
-              MadaratScreen.GameplaySetup
+              previousScreen
             }
-            MadaratScreen.GameplaySetup -> MadaratScreen.Home
+            MadaratScreen.GameplaySetup -> MadaratScreen.TreasureMap
+            MadaratScreen.TreasureMap -> MadaratScreen.Home
             MadaratScreen.Home -> MadaratScreen.Home
           }
         }
 
         if (showSettingsDialog) {
           MadaratSettingsDialog(
+            isDarkTheme = isDarkTheme,
+            onToggleTheme = { isDarkTheme = it },
             onDismissRequest = { showSettingsDialog = false },
             onResetProgress = {
               coroutineScope.launch {
@@ -80,19 +87,39 @@ class MainActivity : ComponentActivity() {
             when (screen) {
               MadaratScreen.Home -> {
                 HomeScreen(
-                  onPlayClick = { currentScreen = MadaratScreen.GameplaySetup },
-                  onExploreWorldsClick = { currentScreen = MadaratScreen.GameplaySetup },
+                  onPlayClick = {
+                    setupInitialCategory = "astronomy"
+                    currentScreen = MadaratScreen.GameplaySetup
+                  },
+                  onExploreWorldsClick = { currentScreen = MadaratScreen.TreasureMap },
                   onSettingsClick = { showSettingsDialog = true }
+                )
+              }
+              MadaratScreen.TreasureMap -> {
+                TreasureMapScreen(
+                  progressMap = allProgress,
+                  onStartRoundClick = { categoryId, difficulty ->
+                    gameViewModel.startSession(categoryId, difficulty)
+                    previousScreen = MadaratScreen.TreasureMap
+                    currentScreen = MadaratScreen.GameRound
+                  },
+                  onConfigureHouseClick = { categoryId ->
+                    setupInitialCategory = categoryId
+                    currentScreen = MadaratScreen.GameplaySetup
+                  },
+                  onBackClick = { currentScreen = MadaratScreen.Home }
                 )
               }
               MadaratScreen.GameplaySetup -> {
                 GameplaySetupScreen(
                   progressMap = allProgress,
-                  onStartRoundClick = { categoryId ->
-                    gameViewModel.startSession(categoryId)
+                  initialCategoryId = setupInitialCategory,
+                  onStartRoundClick = { categoryId, difficulty ->
+                    gameViewModel.startSession(categoryId, difficulty)
+                    previousScreen = MadaratScreen.GameplaySetup
                     currentScreen = MadaratScreen.GameRound
                   },
-                  onBackClick = { currentScreen = MadaratScreen.Home }
+                  onBackClick = { currentScreen = MadaratScreen.TreasureMap }
                 )
               }
               MadaratScreen.GameRound -> {
@@ -100,11 +127,11 @@ class MainActivity : ComponentActivity() {
                   viewModel = gameViewModel,
                   onBackClick = {
                     gameViewModel.savePartialProgress()
-                    currentScreen = MadaratScreen.GameplaySetup
+                    currentScreen = previousScreen
                   },
                   onCompleteRound = {
                     gameViewModel.replaySession()
-                    currentScreen = MadaratScreen.Home
+                    currentScreen = previousScreen
                   }
                 )
               }

@@ -5,6 +5,7 @@ package com.example.ui.navigation
  */
 sealed class MadaratScreen {
     object Home : MadaratScreen()
+    object TreasureMap : MadaratScreen()
     object GameplaySetup : MadaratScreen()
     object GameRound : MadaratScreen()
 }

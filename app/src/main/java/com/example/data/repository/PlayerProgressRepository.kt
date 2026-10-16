@@ -45,13 +45,20 @@ class PlayerProgressRepository(
      *   - [bestCompletionPercentage]: max(existing, newPercentage)
      *   - [lastPlayedTimestamp]: current time
      *   - [totalAttempts]: incremented by 1
-     *   - [completedSessions]: incremented by 1
+     *   - [completedSessions]: incremented by 1 (if session finished)
+     *   - [completedChallengesCount]: accumulated / maxed
+     *   - [totalCorrectAnswers]: incremented by correct answers in session
+     *   - [totalWrongAnswers]: incremented by wrong attempts
      */
     suspend fun saveSessionProgress(
         categoryId: String,
         score: Int,
         completedPuzzlesCount: Int,
-        completionPercentage: Int
+        completionPercentage: Int,
+        completedChallengesCountDelta: Int = 0,
+        correctAnswersDelta: Int = 0,
+        wrongAnswersDelta: Int = 0,
+        isCompletedSession: Boolean = true
     ): PlayerProgressEntity {
         val existing = playerProgressDao.getProgressById(categoryId)
         val now = System.currentTimeMillis()
@@ -64,7 +71,10 @@ class PlayerProgressRepository(
                 bestCompletionPercentage = completionPercentage,
                 lastPlayedTimestamp = now,
                 totalAttempts = 1,
-                completedSessions = 1
+                completedSessions = if (isCompletedSession) 1 else 0,
+                completedChallengesCount = completedChallengesCountDelta,
+                totalCorrectAnswers = correctAnswersDelta,
+                totalWrongAnswers = wrongAnswersDelta
             )
         } else {
             existing.copy(
@@ -73,7 +83,10 @@ class PlayerProgressRepository(
                 bestCompletionPercentage = maxOf(existing.bestCompletionPercentage, completionPercentage),
                 lastPlayedTimestamp = now,
                 totalAttempts = existing.totalAttempts + 1,
-                completedSessions = existing.completedSessions + 1
+                completedSessions = if (isCompletedSession) existing.completedSessions + 1 else existing.completedSessions,
+                completedChallengesCount = existing.completedChallengesCount + completedChallengesCountDelta,
+                totalCorrectAnswers = existing.totalCorrectAnswers + correctAnswersDelta,
+                totalWrongAnswers = existing.totalWrongAnswers + wrongAnswersDelta
             )
         }
 

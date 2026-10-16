@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
@@ -64,11 +63,11 @@ import com.example.ui.components.MadaratPrimaryButton
 import com.example.ui.components.MadaratProgressBar
 import com.example.ui.components.MadaratSecondaryButton
 import com.example.ui.components.MadaratStatusBadge
+import com.example.ui.components.QuestionVisualCard
 import com.example.ui.components.StatusBadgeType
 import com.example.ui.game.PuzzleGameViewModel
 import com.example.ui.game.PuzzleUiState
 import com.example.ui.game.SubmissionFeedback
-import com.example.ui.theme.AmberGoldDark
 import com.example.ui.theme.AmberGoldLight
 import com.example.ui.theme.AmberGoldPrimary
 import com.example.ui.theme.CelestialNavyDark
@@ -80,11 +79,11 @@ import com.example.ui.theme.EmeraldSuccess
 import com.example.ui.theme.EtherealCyan
 import com.example.ui.theme.EtherealCyanLight
 import com.example.ui.theme.GameCornerRadius
-import com.example.ui.theme.GameElevation
 import com.example.ui.theme.GameSpacing
 import com.example.ui.theme.GameTileMetrics
 import com.example.ui.theme.GameTypography
 import com.example.ui.theme.GoldGlowBorder
+import com.example.ui.theme.HouseThemes
 import com.example.ui.theme.PearlIvory
 import com.example.ui.theme.StarlightSilver
 import com.example.ui.theme.Typography
@@ -101,6 +100,7 @@ fun GameRoundScreen(
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val houseTheme = HouseThemes.getThemeForCategory(uiState.categoryId)
 
     Box(
         modifier = modifier
@@ -108,22 +108,22 @@ fun GameRoundScreen(
             .background(
                 brush = Brush.verticalGradient(
                     colors = listOf(
-                        CelestialNavyDark,
+                        houseTheme.backgroundGradient.first(),
                         CelestialNavyMedium,
-                        Color(0xFF090E20)
+                        Color(0xFF070B18)
                     )
                 )
             )
             .testTag("game_round_screen")
     ) {
-        // Subtle Cosmic Background Ambient
+        // Subtle House Atmosphere Background Canvas
         Canvas(modifier = Modifier.fillMaxSize()) {
             val width = size.width
             val height = size.height
 
             drawCircle(
                 brush = Brush.radialGradient(
-                    colors = listOf(AmberGoldPrimary.copy(alpha = 0.05f), Color.Transparent),
+                    colors = listOf(houseTheme.accentGlow.copy(alpha = 0.08f), Color.Transparent),
                     center = Offset(width * 0.5f, height * 0.35f),
                     radius = width * 0.7f
                 )
@@ -131,7 +131,6 @@ fun GameRoundScreen(
         }
 
         if (uiState.isSessionCompleted) {
-            // Final Results State
             FinalResultsContent(
                 uiState = uiState,
                 onReplayClick = { viewModel.replaySession() },
@@ -143,7 +142,6 @@ fun GameRoundScreen(
                     .padding(horizontal = GameSpacing.screenPadding)
             )
         } else if (uiState.currentPuzzle == null) {
-            // Safe fallback state for empty or invalid puzzle set
             EmptyPuzzleFallbackContent(
                 onBackClick = onBackClick,
                 modifier = Modifier
@@ -153,7 +151,6 @@ fun GameRoundScreen(
                     .padding(horizontal = GameSpacing.screenPadding)
             )
         } else {
-            // Active Gameplay Loop
             ActivePuzzleContent(
                 uiState = uiState,
                 onBackClick = onBackClick,
@@ -266,7 +263,6 @@ private fun ActivePuzzleContent(
                 testTag = "round_level_indicator"
             )
 
-            // Current Score Indicator
             MadaratCounter(
                 count = uiState.score,
                 isCoin = true,
@@ -285,7 +281,7 @@ private fun ActivePuzzleContent(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = "اللغز ${uiState.currentPuzzleNumber} من ${uiState.totalPuzzlesCount}",
+                    text = "السؤال ${uiState.currentQuestionInChallengeNumber} من ${uiState.totalQuestionsInCurrentChallenge} • التحدي ${uiState.currentPuzzleNumber} من ${uiState.totalPuzzlesCount}",
                     style = Typography.labelSmall,
                     color = StarlightSilver,
                     modifier = Modifier.testTag("progress_text")
@@ -306,72 +302,44 @@ private fun ActivePuzzleContent(
         Spacer(modifier = Modifier.height(GameSpacing.xs))
 
         // --------------------------------------------------------------------
-        // 2. QUESTION / CLUE CARD
+        // 2. QUESTION VISUAL ILLUSTRATION CARD
         // --------------------------------------------------------------------
-        MadaratGameCard(
-            modifier = Modifier.fillMaxWidth(),
-            backgroundColor = CelestialSurfaceElevated,
-            borderColor = when (uiState.submissionFeedback) {
-                SubmissionFeedback.Correct -> EmeraldSuccess
-                SubmissionFeedback.Incorrect -> CrimsonNovaError
-                SubmissionFeedback.Idle -> GoldGlowBorder
-            },
-            testTag = "round_clue_card"
+        QuestionVisualCard(
+            puzzle = puzzle,
+            isSolved = uiState.submissionFeedback == SubmissionFeedback.Correct,
+            modifier = Modifier.padding(vertical = GameSpacing.xs)
+        )
+
+        // Visible hint banner upon activating the Show Hint assistance
+        AnimatedVisibility(
+            visible = uiState.isHintVisible && !puzzle.hint.isNullOrBlank(),
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically()
         ) {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = GameSpacing.xs)
+                    .clip(GameCornerRadius.shapeMd)
+                    .background(CelestialNavyDark.copy(alpha = 0.85f))
+                    .border(1.dp, EtherealCyan.copy(alpha = 0.5f), GameCornerRadius.shapeMd)
+                    .padding(horizontal = GameSpacing.md, vertical = GameSpacing.sm)
+                    .testTag("hint_text_container"),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(GameSpacing.sm)
             ) {
-                MadaratStatusBadge(
-                    text = "اللغز ${uiState.currentPuzzleNumber} • مكافأة: ${uiState.currentReward} نقطة",
-                    type = when (uiState.submissionFeedback) {
-                        SubmissionFeedback.Correct -> StatusBadgeType.Success
-                        SubmissionFeedback.Incorrect -> StatusBadgeType.Error
-                        SubmissionFeedback.Idle -> StatusBadgeType.Warning
-                    },
-                    modifier = Modifier.padding(bottom = GameSpacing.sm)
+                Icon(
+                    imageVector = Icons.Default.Lightbulb,
+                    contentDescription = null,
+                    tint = AmberGoldLight,
+                    modifier = Modifier.size(18.dp)
                 )
-
                 Text(
-                    text = puzzle.question,
-                    style = Typography.headlineSmall.copy(lineHeight = 28.sp),
+                    text = puzzle.hint ?: "",
+                    style = Typography.bodySmall,
                     color = PearlIvory,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(horizontal = GameSpacing.sm)
+                    modifier = Modifier.weight(1f)
                 )
-
-                // Visible hint banner upon activating the Show Hint assistance
-                AnimatedVisibility(
-                    visible = uiState.isHintVisible && !puzzle.hint.isNullOrBlank(),
-                    enter = fadeIn() + expandVertically(),
-                    exit = fadeOut() + shrinkVertically()
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = GameSpacing.sm)
-                            .clip(GameCornerRadius.shapeMd)
-                            .background(CelestialNavyDark.copy(alpha = 0.85f))
-                            .border(1.dp, EtherealCyan.copy(alpha = 0.5f), GameCornerRadius.shapeMd)
-                            .padding(horizontal = GameSpacing.md, vertical = GameSpacing.sm)
-                            .testTag("hint_text_container"),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(GameSpacing.sm)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Lightbulb,
-                            contentDescription = null,
-                            tint = AmberGoldLight,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Text(
-                            text = puzzle.hint ?: "",
-                            style = Typography.bodySmall,
-                            color = PearlIvory,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                }
             }
         }
 
@@ -418,7 +386,7 @@ private fun ActivePuzzleContent(
                             onRemoveSlot(i)
                         }
                     },
-                    size = 54.dp,
+                    size = 52.dp,
                     testTag = "answer_slot_$i"
                 )
             }
@@ -442,7 +410,7 @@ private fun ActivePuzzleContent(
                 }
                 SubmissionFeedback.Incorrect -> {
                     MadaratStatusBadge(
-                        text = "❌ إجابة غير صحيحة، حاول مجدداً واعد ترتيب الحروف",
+                        text = "❌ إجابة غير صحيحة، حاول مجدداً وأعد ترتيب الحروف",
                         type = StatusBadgeType.Error,
                         modifier = Modifier
                             .padding(vertical = GameSpacing.xs)
@@ -456,31 +424,20 @@ private fun ActivePuzzleContent(
         Spacer(modifier = Modifier.height(GameSpacing.xs))
 
         // --------------------------------------------------------------------
-        // 4. LETTER TILES POOL (Available for selection)
+        // 4. LETTER TILES POOL (Scrambled Available Letters)
         // --------------------------------------------------------------------
+        val lettersList = puzzle.availableLetters
+        val rowSize = if (lettersList.size > 8) 5 else 4
+        val chunkedRows = lettersList.indices.chunked(rowSize)
+
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(GameTileMetrics.tileSpacing),
             modifier = Modifier.padding(vertical = GameSpacing.xs)
         ) {
-            // First 4 tiles
-            Row(horizontalArrangement = Arrangement.spacedBy(GameTileMetrics.tileSpacing)) {
-                for (i in 0 until minOf(4, puzzle.availableLetters.size)) {
-                    LetterTileItem(
-                        index = i,
-                        letter = puzzle.availableLetters[i],
-                        isSelected = i in uiState.selectedTileIndices,
-                        isEliminated = i in uiState.eliminatedTileIndices,
-                        submissionFeedback = uiState.submissionFeedback,
-                        onSelect = { onSelectLetter(i) }
-                    )
-                }
-            }
-
-            // Remaining tiles
-            if (puzzle.availableLetters.size > 4) {
+            chunkedRows.forEach { rowIndices ->
                 Row(horizontalArrangement = Arrangement.spacedBy(GameTileMetrics.tileSpacing)) {
-                    for (i in 4 until puzzle.availableLetters.size) {
+                    rowIndices.forEach { i ->
                         LetterTileItem(
                             index = i,
                             letter = puzzle.availableLetters[i],
@@ -500,10 +457,15 @@ private fun ActivePuzzleContent(
         // 5. ACTION CONTROLS
         // --------------------------------------------------------------------
         if (uiState.submissionFeedback == SubmissionFeedback.Correct) {
-            // Primary Next Puzzle button when solved
             val isLastPuzzle = uiState.currentPuzzleNumber == uiState.totalPuzzlesCount
+            val nextLabel = if (isLastPuzzle) {
+                "عرض نتيجة التحدي المداري"
+            } else {
+                "السؤال التالي (${uiState.currentQuestionInChallengeNumber + 1} من ${uiState.totalQuestionsInCurrentChallenge})"
+            }
+
             MadaratPrimaryButton(
-                text = if (isLastPuzzle) "عرض النتيجة النهائية" else "اللغز التالي",
+                text = nextLabel,
                 icon = Icons.AutoMirrored.Filled.ArrowForward,
                 onClick = onNextPuzzle,
                 modifier = Modifier
@@ -512,14 +474,12 @@ private fun ActivePuzzleContent(
                 testTag = "round_next_button"
             )
         } else {
-            // In-game controls: Backspace, Clear, and Submit
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = GameSpacing.md),
                 verticalArrangement = Arrangement.spacedBy(GameSpacing.xs)
             ) {
-                // Secondary actions row (Clear & Backspace)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(GameSpacing.sm)
@@ -529,7 +489,6 @@ private fun ActivePuzzleContent(
                         icon = Icons.Default.Clear,
                         onClick = onClear,
                         modifier = Modifier.weight(1f),
-                        enabled = uiState.userSelectedTileIndices.isNotEmpty(),
                         testTag = "round_clear_button"
                     )
 
@@ -538,18 +497,16 @@ private fun ActivePuzzleContent(
                         icon = Icons.AutoMirrored.Filled.Backspace,
                         onClick = onRemoveLastLetter,
                         modifier = Modifier.weight(1f),
-                        enabled = uiState.userSelectedTileIndices.isNotEmpty(),
                         testTag = "round_backspace_button"
                     )
                 }
 
-                // Submit button
                 MadaratPrimaryButton(
-                    text = "تأكيد الإجابة",
+                    text = "تحقق من الإجابة",
                     icon = Icons.Default.Check,
                     onClick = onSubmit,
-                    modifier = Modifier.fillMaxWidth(),
                     enabled = uiState.isAnswerComplete,
+                    modifier = Modifier.fillMaxWidth(),
                     testTag = "round_submit_button"
                 )
             }
@@ -566,24 +523,24 @@ private fun LetterTileItem(
     submissionFeedback: SubmissionFeedback,
     onSelect: () -> Unit
 ) {
-    val state = when {
+    val tileState = when {
         isEliminated -> LetterTileState.Disabled
-        submissionFeedback == SubmissionFeedback.Correct && isSelected -> LetterTileState.Correct
         isSelected -> LetterTileState.Placed
+        submissionFeedback == SubmissionFeedback.Correct -> LetterTileState.Disabled
         else -> LetterTileState.Available
     }
 
     MadaratLetterTile(
         letter = letter,
-        state = state,
-        onClick = { if (!isEliminated) onSelect() },
-        size = 54.dp,
+        state = tileState,
+        onClick = onSelect,
+        size = 50.dp,
         testTag = "letter_tile_$index"
     )
 }
 
 // ============================================================================
-// FINAL RESULTS VIEW — شاشة النتيجة بعد إنهاء 10 ألغاز
+// FINAL RESULTS VIEW — شاشة نتيجة التحدي المداري
 // ============================================================================
 
 @Composable
@@ -598,7 +555,6 @@ private fun FinalResultsContent(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.SpaceBetween
     ) {
-        // Header with Celestial Star Emblem
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.padding(top = GameSpacing.lg)
@@ -626,7 +582,7 @@ private fun FinalResultsContent(
             Spacer(modifier = Modifier.height(GameSpacing.sm))
 
             MadaratStatusBadge(
-                text = "اكتملت المحطات العشر بنجاح",
+                text = "اكتمل التحدي بنجاح تام",
                 type = StatusBadgeType.Success,
                 modifier = Modifier.padding(bottom = GameSpacing.xs)
             )
@@ -648,7 +604,7 @@ private fun FinalResultsContent(
             Spacer(modifier = Modifier.height(GameSpacing.xs))
 
             Text(
-                text = "أحسنت يا مستكشف المعرفة! لقد أتممت جميع ألغاز $houseName بنجاح باهر وكشفت أسرار الكلمات.",
+                text = "أحسنت يا بطل المعرفة! لقد حللت ألغاز التحدي واستنبطت الكلمات بنجاح.",
                 style = Typography.bodyMedium.copy(lineHeight = 24.sp),
                 color = Color(0xFFCBD5E1),
                 textAlign = TextAlign.Center,
@@ -669,7 +625,6 @@ private fun FinalResultsContent(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Score Highlight
                 Text(
                     text = "مجموع النقاط المكتسبة",
                     style = Typography.labelMedium,
@@ -685,7 +640,6 @@ private fun FinalResultsContent(
 
                 Spacer(modifier = Modifier.height(GameSpacing.lg))
 
-                // Stats Row
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -696,7 +650,7 @@ private fun FinalResultsContent(
                     horizontalArrangement = Arrangement.SpaceAround
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(text = "الألغاز", style = Typography.labelSmall, color = StarlightSilver)
+                        Text(text = "الأسئلة", style = Typography.labelSmall, color = StarlightSilver)
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = "${uiState.totalPuzzlesCount} من ${uiState.totalPuzzlesCount}",
@@ -738,7 +692,7 @@ private fun FinalResultsContent(
             verticalArrangement = Arrangement.spacedBy(GameSpacing.sm)
         ) {
             MadaratPrimaryButton(
-                text = "إعادة الجولة الاستكشافية",
+                text = "إعادة التحدي",
                 icon = Icons.Default.Replay,
                 onClick = onReplayClick,
                 modifier = Modifier.fillMaxWidth(),

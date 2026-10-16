@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.VolumeUp
@@ -57,7 +58,9 @@ fun MadaratSettingsDialog(
     onDismissRequest: () -> Unit,
     onResetProgress: () -> Unit,
     modifier: Modifier = Modifier,
-    appVersion: String = "Beta 0.1.0"
+    isDarkTheme: Boolean = true,
+    onToggleTheme: (Boolean) -> Unit = {},
+    appVersion: String = "1.0.0"
 ) {
     var soundEnabled by remember { mutableStateOf(true) }
     var hapticsEnabled by remember { mutableStateOf(true) }
@@ -99,7 +102,7 @@ fun MadaratSettingsDialog(
                 Spacer(modifier = Modifier.height(GameSpacing.sm))
 
                 Text(
-                    text = "إعدادات مدارات",
+                    text = "إعدادات لغز وكنز",
                     style = Typography.titleLarge,
                     color = PearlIvory
                 )
@@ -155,6 +158,53 @@ fun MadaratSettingsDialog(
                         modifier = Modifier.fillMaxWidth(),
                         verticalArrangement = Arrangement.spacedBy(GameSpacing.sm)
                     ) {
+                        // Theme (Dark / Light) Mode Toggle
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(GameCornerRadius.shapeMd)
+                                .background(CelestialNavyDark.copy(alpha = 0.5f))
+                                .border(1.dp, CosmicBorder.copy(alpha = 0.5f), GameCornerRadius.shapeMd)
+                                .padding(horizontal = GameSpacing.md, vertical = GameSpacing.sm),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(GameSpacing.sm)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.DarkMode,
+                                    contentDescription = null,
+                                    tint = AmberGoldLight,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Column {
+                                    Text(
+                                        text = if (isDarkTheme) "الوضع الداكن" else "الوضع الفاتح",
+                                        style = Typography.bodyMedium,
+                                        color = PearlIvory
+                                    )
+                                    Text(
+                                        text = if (isDarkTheme) "مظهر ليلي كوني مريح للعين" else "مظهر نهاري مشرق وواضح",
+                                        style = Typography.labelSmall,
+                                        color = StarlightSilver
+                                    )
+                                }
+                            }
+                            Switch(
+                                checked = isDarkTheme,
+                                onCheckedChange = onToggleTheme,
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = AmberGoldPrimary,
+                                    checkedTrackColor = AmberGoldDark,
+                                    uncheckedThumbColor = StarlightSilver,
+                                    uncheckedTrackColor = CelestialNavyDark
+                                ),
+                                modifier = Modifier.testTag("theme_switch")
+                            )
+                        }
+
                         // Sound FX Toggle
                         Row(
                             modifier = Modifier
